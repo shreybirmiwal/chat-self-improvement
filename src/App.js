@@ -2,21 +2,52 @@ import { useState, useEffect } from 'react';
 import { Dialog } from '@headlessui/react';
 import axios from 'axios';
 
+
 const prompts = {
-  "Basic Prompt": {
-    template: "Respond to the following query: {input}",
+  "should_discard_memory": {
+    template: `
+      You will be given a conversation transcript, and your task is to determine if the conversation is worth storing as a memory or not. 
+      It is not worth storing if there are no interesting topics, facts, or information, in that case, output discard = True.
+
+      Transcript: {input}
+    `,
     samples: [
-      "What is the capital of France?",
-      "Explain quantum computing in simple terms"
+      "A: Hey, how are you? B: I'm good, how about you? A: I'm good too.",
+      "A: What's your favorite color? B: Blue. A: Mine is red."
     ]
   },
-  "Creative Writer": {
-    template: "Write a creative story about: {input}",
+
+  "retrieve_is_an_omi_question": {
+    template: `
+    Task: Analyze the question to identify if the user is inquiring about the functionalities or usage of the app, Omi or Friend. Focus on detecting questions related to the app's operations or capabilities.
+
+    Examples of User Questions:
+
+    - "How does it work?"
+    - "What can you do?"
+    - "How can I buy it?"
+    - "Where do I get it?"
+    - "How does the chat function?"
+
+    Instructions:
+
+    1. Review the question carefully.
+    2. Determine if the user is asking about:
+     - The operational aspects of the app.
+     - How to utilize the app effectively.
+     - Any specific features or purchasing options.
+
+    Output: Clearly state if the user is asking a question related to the app's functionality or usage. If yes, specify the nature of the inquiry.
+
+    User's Question: {input}
+    `,
     samples: [
-      "A robot learning to love",
-      "A haunted mansion in the 22nd century"
+      "What is the capital of France?",
+      "What is the meaning of life?"
     ]
   }
+
+
 };
 
 const App = () => {
@@ -29,6 +60,7 @@ const App = () => {
   const [output, setOutput] = useState('');
   const [feedback, setFeedback] = useState('');
   const [history, setHistory] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     axios.get('https://openrouter.ai/api/v1/models')
@@ -37,6 +69,7 @@ const App = () => {
   }, []);
 
   const handleRunSim = async () => {
+    setIsLoading(true);
     const fullPrompt = promptText.replace('{input}', inputData);
 
     try {
@@ -60,13 +93,18 @@ const App = () => {
       console.error(err);
       alert('Error running simulation');
     }
+    finally {
+      setIsLoading(false);
+    }
   };
 
   const handleImprovePrompt = async () => {
+    setIsLoading(true);
     if (!feedback) return alert('Please provide feedback first');
 
     const improvementPrompt = `Current prompt: ${promptText}
     User Feedback: ${feedback}
+    Previous Input; ${inputData}
     Previous Output: ${output}
     
     Please improve the prompt based on the feedback. Respond with ONLY the new improved prompt, no other text.`;
@@ -93,11 +131,18 @@ const App = () => {
     } catch (err) {
       console.error(err);
       alert('Error improving prompt');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-t-transparent border-blue-500"></div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header Section */}
         <div className="bg-white rounded-lg p-6 shadow-sm">
@@ -221,5 +266,3 @@ const App = () => {
 
 export default App;
 
-
-// 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
